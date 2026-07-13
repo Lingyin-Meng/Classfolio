@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}文件管理 - 教师后台{% endblock %}
+{% block content %}
+
+<a href="{{ url_for('admin.dashboard') }}" class="back-link">← 返回管理后台</a>
+
+<h1 class="admin-title">全局文件看板</h1>
+
+<div class="filter-bar">
+    <form method="GET" class="filter-form">
+        <select name="student" class="filter-select" onchange="this.form.submit()">
+            <option value="">全部学生</option>
+            {% for s in students %}
+            <option value="{{ s.username }}" {% if current_filter == s.username %}selected{% endif %}>{{ s.username }}</option>
+            {% endfor %}
+        </select>
+        <select name="status" class="filter-select" onchange="this.form.submit()">
+            <option value="">全部状态</option>
+            <option value="pending" {% if current_status == 'pending' %}selected{% endif %}>待审核</option>
+            <option value="approved" {% if current_status == 'approved' %}selected{% endif %}>已通过</option>
+            <option value="rejected" {% if current_status == 'rejected' %}selected{% endif %}>已拒绝</option>
+        </select>
+    </form>
+    <span class="filter-count">共 {{ files|length }} 个文件</span>
+</div>
+
+{% if files %}
+<div class="admin-file-table">
+    <table>
+        <thead>
+            <tr>
+                <th>预览</th>
+                <th>文件名</th>
+                <th>上传者</th>
+                <th>上传时间</th>
+                <th>类型</th>
+                <th>大小</th>
+                <th>审核状态</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for file in files %}
+            <tr id="admin-file-{{ file.id }}">
+                <td class="col-preview">
+                    {% if file.file_type == 'image' %}
+                    <img src="{{ url_for('upload.serve_file', file_id=file.id) }}" class="table-thumb" onclick="openPreview({{ file.id }}, '{{ file.file_type }}', '{{ file.filename|e }}')">
+                    {% else %}
+                    <span class="file-type-badge video">视频</span>
+                    {% endif %}
+                </td>
+                <td class="col-filename" title="{{ file.filename }}">{{ file.filename }}</td>
+                <td>{{ file.uploader.username }}</td>
+                <td>{{ file.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td><span class="file-type-badge {{ file.file_type }}">{{ '图片' if file.file_type == 'image' else '视频' }}</span></td>
+                <td>{{ (file.file_size / 1024 / 1024)|round(1) }} MB</td>
+                <td>
+                    <span class="review-status review-{{ file.status }}">
+                    {% if file.status == 'pending' %}待审核
+                    {% elif file.status == 'approved' %}已通过
+                    {% else %}已拒绝
+                    {% endif %}
+                    </span>
+                </td>
+                <td class="col-actions">
+                    {% if file.status == 'pending' %}
+                    <button class="btn btn-success btn-sm" onclick="reviewFile({{ file.id }}, 'approve')">通过</button>
+                    <button class="btn btn-danger btn-sm" onclick="reviewFile({{ file.id }}, 'reject')">拒绝</button>
+                    {% elif file.status == 'rejected' %}
+                    <button class="btn btn-success btn-sm" onclick="reviewFile({{ file.id }}, 'approve')">改为通过</button>
+                    <button class="btn btn-danger btn-sm" onclick="adminDeleteFile({{ file.id }})">删除</button>
+                    {% else %}
+                    <button class="btn btn-sm" onclick="openPreview({{ file.id }}, '{{ file.file_type }}', '{{ file.filename|e }}')">预览</button>
+                    <button class="btn btn-danger btn-sm" onclick="adminDeleteFile({{ file.id }})">删除</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <p>还没有任何文件</p>
+</div>
+{% endif %}
+
+{% endblock %}
+{% block scripts %}
+<script>
+function adminDeleteFile(fileId) {
+    if (!confirm('确定要删除这个文件吗？此操作不可撤销。')) return;
+    fetch('/admin/file/' + fileId, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('admin-file-' + fileId).remove();
+            } else {
+                alert(data.error || '删除失败');
+            }
+        });
+}
+
+function reviewFile(fileId, action) {
+    const formData = new FormData();
+    formData.append('action', action);
+
+    fetch('/admin/file/' + fileId + '/review', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error || '操作失败');
+            }
+        });
+}
+</script>
+{% endblock %}

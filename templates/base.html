@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}课堂作品平台{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-brand">课堂作品平台</a>
+            <div class="nav-links">
+                {% if session.user_id %}
+                    {% if session.role == 'admin' %}
+                        <a href="{{ url_for('admin.dashboard') }}">管理后台</a>
+                    {% else %}
+                        <span class="nav-welcome">你好，{{ session.username }}</span>
+                        <a href="{{ url_for('upload.home') }}">我的作品</a>
+                        <a href="{{ url_for('browse.index') }}">同学作品</a>
+                    {% endif %}
+                    <a href="{{ url_for('auth.logout') }}">退出</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/preview.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

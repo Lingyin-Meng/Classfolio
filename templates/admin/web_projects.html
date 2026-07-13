@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}网页项目管理 - 教师后台{% endblock %}
+{% block content %}
+
+<a href="{{ url_for('admin.dashboard') }}" class="back-link">← 返回管理后台</a>
+
+<h1 class="admin-title">网页项目管理</h1>
+
+<div class="filter-bar">
+    <form method="GET" class="filter-form">
+        <select name="status" class="filter-select" onchange="this.form.submit()">
+            <option value="">全部状态</option>
+            <option value="pending" {% if current_status == 'pending' %}selected{% endif %}>待审核</option>
+            <option value="approved" {% if current_status == 'approved' %}selected{% endif %}>已通过</option>
+            <option value="rejected" {% if current_status == 'rejected' %}selected{% endif %}>已拒绝</option>
+        </select>
+    </form>
+    <span class="filter-count">共 {{ projects|length }} 个项目</span>
+</div>
+
+{% if projects %}
+<div class="admin-file-table">
+    <table>
+        <thead>
+            <tr>
+                <th>项目名称</th>
+                <th>部署学生</th>
+                <th>部署时间</th>
+                <th>解压大小</th>
+                <th>访问地址</th>
+                <th>审核状态</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for wp in projects %}
+            <tr id="admin-web-{{ wp.id }}">
+                <td><strong>{{ wp.project_name }}</strong></td>
+                <td>{{ wp.uploader.username }}</td>
+                <td>{{ wp.deployed_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ (wp.total_size / 1024)|round(0) }} KB</td>
+                <td>
+                    {% if wp.status == 'approved' %}
+                    <code style="font-size:12px;">/web/{{ wp.uploader.username }}/{{ wp.folder_name }}/</code>
+                    {% else %}
+                    <span style="color:var(--text-light);">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="review-status review-{{ wp.status }}">
+                    {% if wp.status == 'pending' %}待审核
+                    {% elif wp.status == 'approved' %}已通过
+                    {% else %}已拒绝
+                    {% endif %}
+                    </span>
+                </td>
+                <td class="col-actions">
+                    {% if wp.status == 'approved' %}
+                    <button class="btn btn-sm" onclick="window.open('/web/{{ wp.uploader.username }}/{{ wp.folder_name }}/', '_blank')">预览</button>
+                    <button class="btn btn-danger btn-sm" onclick="adminDeleteWeb({{ wp.id }})">下线删除</button>
+                    {% elif wp.status == 'pending' %}
+                    <button class="btn btn-success btn-sm" onclick="reviewWeb({{ wp.id }}, 'approve')">通过</button>
+                    <button class="btn btn-danger btn-sm" onclick="reviewWeb({{ wp.id }}, 'reject')">拒绝</button>
+                    {% else %}
+                    <button class="btn btn-success btn-sm" onclick="reviewWeb({{ wp.id }}, 'approve')">改为通过</button>
+                    <button class="btn btn-danger btn-sm" onclick="adminDeleteWeb({{ wp.id }})">删除</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state"><p>还没有网页项目</p></div>
+{% endif %}
+
+{% endblock %}
+{% block scripts %}
+<script>
+function reviewWeb(projectId, action) {
+    const formData = new FormData();
+    formData.append('action', action);
+    fetch('/web/project/' + projectId + '/review', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.error || '操作失败');
+        });
+}
+
+function adminDeleteWeb(projectId) {
+    if (!confirm('确定要删除这个网页项目吗？此操作不可撤销。')) return;
+    fetch('/web/project/' + projectId, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('admin-web-' + projectId).remove();
+            } else { alert(data.error || '删除失败'); }
+        });
+}
+</script>
+{% endblock %}

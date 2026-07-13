@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}教师管理后台{% endblock %}
+{% block content %}
+
+<h1 class="admin-title">管理后台</h1>
+<p class="admin-subtitle">欢迎，{{ session.username }}老师</p>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon">👤</div>
+        <div class="stat-number">{{ pending_users_count }}</div>
+        <div class="stat-label">待审核账号</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">👨‍🎓</div>
+        <div class="stat-number">{{ approved_users_count }}</div>
+        <div class="stat-label">已通过学生</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">⏳</div>
+        <div class="stat-number">{{ pending_files_count }}</div>
+        <div class="stat-label">待审核作品</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">📁</div>
+        <div class="stat-number">{{ total_files }}</div>
+        <div class="stat-label">已发布作品</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">💾</div>
+        <div class="stat-number">{{ (total_size / 1024 / 1024 / 1024)|round(1) }} GB</div>
+        <div class="stat-label">已发布占用空间</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">🌐</div>
+        <div class="stat-number">{{ total_web_count }}</div>
+        <div class="stat-label">已发布网页</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">⏳</div>
+        <div class="stat-number">{{ pending_web_count }}</div>
+        <div class="stat-label">待审核网页</div>
+    </div>
+</div>
+
+<div class="admin-links">
+    <a href="{{ url_for('admin.review') }}" class="admin-link-card">
+        <span class="link-icon">✅</span>
+        <span class="link-text">账号审核</span>
+        {% if pending_users_count > 0 %}
+        <span class="link-badge">{{ pending_users_count }}</span>
+        {% endif %}
+    </a>
+    <a href="{{ url_for('admin.all_files') }}" class="admin-link-card">
+        <span class="link-icon">📋</span>
+        <span class="link-text">文件管理</span>
+        {% if pending_files_count > 0 %}
+        <span class="link-badge">{{ pending_files_count }}</span>
+        {% endif %}
+    </a>
+    <a href="{{ url_for('admin.web_projects') }}" class="admin-link-card">
+        <span class="link-icon">🌐</span>
+        <span class="link-text">网页项目管理</span>
+        {% if pending_web_count > 0 %}
+        <span class="link-badge">{{ pending_web_count }}</span>
+        {% endif %}
+    </a>
+</div>
+
+{% endblock %}

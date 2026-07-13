@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ student.username }}的作品 - 课堂作品平台{% endblock %}
+{% block content %}
+
+<a href="{{ url_for('browse.index') }}" class="back-link">← 返回同学作品</a>
+
+<h2 class="section-title">{{ student.username }}的作品 ({{ files|length }})</h2>
+
+{% if files %}
+<div class="file-grid">
+    {% for file in files %}
+    <div class="file-card">
+        <div class="file-thumb" onclick="openPreview({{ file.id }}, '{{ file.file_type }}', '{{ file.filename|e }}')">
+            {% if file.file_type == 'image' %}
+            <img src="{{ url_for('upload.serve_file', file_id=file.id) }}" alt="{{ file.filename }}" loading="lazy">
+            {% else %}
+            <div class="video-thumb">
+                <video src="{{ url_for('upload.serve_file', file_id=file.id) }}" preload="metadata"></video>
+                <div class="play-icon">▶</div>
+            </div>
+            {% endif %}
+        </div>
+        <div class="file-info">
+            <span class="file-name" title="{{ file.filename }}">{{ file.filename }}</span>
+            <span class="file-size">{{ (file.file_size / 1024 / 1024)|round(1) }} MB</span>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <p>{{ student.username }}还没有上传过作品</p>
+</div>
+{% endif %}
+
+{% endblock %}

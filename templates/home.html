@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}我的主页 - 课堂作品平台{% endblock %}
+{% block content %}
+
+<div class="tab-nav">
+    <button class="tab-btn active" onclick="switchTab('my-works')">我的作品</button>
+    <button class="tab-btn" onclick="switchTab('my-webs')">我的网页</button>
+    <button class="tab-btn" onclick="switchTab('browse-link')" data-href="{{ url_for('browse.index') }}">同学作品</button>
+</div>
+
+<!-- 图片/视频上传 -->
+<div id="my-works" class="tab-content active">
+    <div class="upload-section">
+        <div id="drop-zone" class="drop-zone">
+            <div class="drop-icon">☁️</div>
+            <p id="drop-text" class="drop-text">点击选择文件 或 拖拽文件到这里</p>
+            <p class="drop-hint">支持图片和视频，单文件最大 100MB</p>
+            <p class="drop-hint" style="color:#E05555;">上传后需教师审核通过才会展示给同学</p>
+            <input type="file" id="file-input" accept="image/*,video/*" hidden>
+        </div>
+        <div id="progress-bar" class="progress-bar" style="display:none;">
+            <div id="progress-fill" class="progress-fill"></div>
+            <span id="progress-text" class="progress-text">0%</span>
+        </div>
+    </div>
+
+    <h2 class="section-title">我的作品 ({{ files|length }})</h2>
+    {% if files %}
+    <div class="file-grid">
+        {% for file in files %}
+        <div class="file-card" id="file-card-{{ file.id }}">
+            <div class="file-thumb" onclick="openPreview({{ file.id }}, '{{ file.file_type }}', '{{ file.filename|e }}')">
+                {% if file.file_type == 'image' %}
+                <img src="{{ url_for('upload.serve_file', file_id=file.id) }}" alt="{{ file.filename }}" loading="lazy">
+                {% else %}
+                <div class="video-thumb">
+                    <video src="{{ url_for('upload.serve_file', file_id=file.id) }}" preload="metadata"></video>
+                    <div class="play-icon">▶</div>
+                </div>
+                {% endif %}
+            </div>
+            <div class="file-info">
+                <span class="file-name" title="{{ file.filename }}">{{ file.filename }}</span>
+                <span class="file-size">{{ (file.file_size / 1024 / 1024)|round(1) }} MB</span>
+                <span class="file-status-badge status-{{ file.status }}">
+                    {% if file.status == 'pending' %}⏳ 待审核
+                    {% elif file.status == 'approved' %}✅ 已通过
+                    {% else %}❌ 作品被打回
+                    {% endif %}
+                </span>
+            </div>
+            <button class="btn-delete" onclick="deleteFile({{ file.id }})" title="删除">🗑</button>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state"><p>还没有上传过文件，点击上方区域开始上传吧！</p></div>
+    {% endif %}
+</div>
+
+<!-- 网页项目上传和管理 -->
+<div id="my-webs" class="tab-content">
+    <div class="upload-section">
+        <div id="web-drop-zone" class="drop-zone web-drop-zone">
+            <div class="drop-icon">🌐</div>
+            <p id="web-drop-text" class="drop-text">上传网页项目（.zip 压缩包）</p>
+            <p class="drop-hint">将你的网页文件夹压缩为 .zip 后上传，压缩包内必须包含 index.html</p>
+            <p class="drop-hint" style="color:#E05555;">上传后需教师审核通过才会展示给同学</p>
+            <p class="drop-hint">单个 ZIP 最大 50MB，解压后总大小不超过 50MB</p>
+            <input type="file" id="web-file-input" accept=".zip" hidden>
+        </div>
+        <div id="web-progress-bar" class="progress-bar" style="display:none;">
+            <div id="web-progress-fill" class="progress-fill"></div>
+            <span id="web-progress-text" class="progress-text">0%</span>
+        </div>
+    </div>
+
+    <h2 class="section-title">我的网页项目 ({{ web_projects|length }})</h2>
+    {% if web_projects %}
+    <div class="web-project-list">
+        {% for wp in web_projects %}
+        <div class="web-project-item" id="web-project-{{ wp.id }}">
+            <div class="web-project-icon">&lt;/&gt;</div>
+            <div class="web-project-info">
+                <span class="web-project-name">{{ wp.project_name }}</span>
+                <span class="web-project-size">{{ (wp.total_size / 1024)|round(0) }} KB</span>
+                <span class="file-status-badge status-{{ wp.status }}">
+                    {% if wp.status == 'pending' %}⏳ 待审核
+                    {% elif wp.status == 'approved' %}✅ 已通过
+                    {% else %}❌ 作品被打回
+                    {% endif %}
+                </span>
+            </div>
+            <div class="web-project-actions">
+                {% if wp.status == 'approved' %}
+                <button class="btn btn-success btn-sm" onclick="openWebProject({{ wp.id }})">访问预览</button>
+                {% endif %}
+                <button class="btn btn-sm" onclick="reuploadWeb({{ wp.id }})" title="重新上传同名 ZIP 覆盖">更新</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteWebProject({{ wp.id }})">删除</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state"><p>还没有部署过网页项目，上传你的第一个网页吧！</p></div>
+    {% endif %}
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+let pendingReuploadId = null;
+
+function switchTab(tabId) {
+    if (tabId === 'browse-link') {
+        window.location.href = '{{ url_for("browse.index") }}';
+        return;
+    }
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+}
+
+// 网页项目上传
+document.addEventListener('DOMContentLoaded', function() {
+    const webDrop = document.getElementById('web-drop-zone');
+    const webInput = document.getElementById('web-file-input');
+    if (!webDrop || !webInput) return;
+
+    webDrop.addEventListener('click', () => webInput.click());
+    webInput.addEventListener('change', () => {
+        if (webInput.files.length > 0) uploadWebZip(webInput.files[0]);
+    });
+    webDrop.addEventListener('dragover', e => { e.preventDefault(); webDrop.classList.add('drag-over'); });
+    webDrop.addEventListener('dragleave', () => webDrop.classList.remove('drag-over'));
+    webDrop.addEventListener('drop', e => {
+        e.preventDefault();
+        webDrop.classList.remove('drag-over');
+        if (e.dataTransfer.files.length > 0) uploadWebZip(e.dataTransfer.files[0]);
+    });
+});
+
+function uploadWebZip(file) {
+    if (!file.name.toLowerCase().endsWith('.zip')) {
+        alert('仅支持 .zip 格式的压缩包'); return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+        alert('压缩包不能超过 50MB'); return;
+    }
+
+    const bar = document.getElementById('web-progress-bar');
+    const fill = document.getElementById('web-progress-fill');
+    const text = document.getElementById('web-progress-text');
+    const dropText = document.getElementById('web-drop-text');
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const xhr = new XMLHttpRequest();
+    xhr.upload.addEventListener('progress', e => {
+        if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            fill.style.width = pct + '%';
+            text.textContent = pct + '%';
+        }
+    });
+    xhr.addEventListener('load', () => {
+        try {
+            const resp = JSON.parse(xhr.responseText);
+            if (resp.success) {
+                text.textContent = '部署完成！';
+                dropText.textContent = resp.message;
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                text.textContent = '上传失败';
+                dropText.textContent = resp.error || '上传失败';
+            }
+        } catch(e) { text.textContent = '错误'; dropText.textContent = '服务器错误'; }
+    });
+    xhr.addEventListener('error', () => { text.textContent = '网络错误'; dropText.textContent = '网络错误，请重试'; });
+
+    xhr.open('POST', '/web/upload');
+    bar.style.display = 'block';
+    fill.style.width = '0%';
+    text.textContent = '0%';
+    dropText.textContent = '正在上传并解压...';
+    xhr.send(formData);
+}
+
+function openWebProject(projectId) {
+    fetch('/web/project/' + projectId + '/preview')
+        .then(r => r.json())
+        .then(data => { if (data.url) window.open(data.url, '_blank'); });
+}
+
+function reuploadWeb(projectId) {
+    pendingReuploadId = projectId;
+    document.getElementById('web-file-input').click();
+}
+
+function deleteWebProject(projectId) {
+    if (!confirm('确定要删除这个网页项目吗？')) return;
+    fetch('/web/project/' + projectId, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('web-project-' + projectId).remove();
+            } else { alert(data.error || '删除失败'); }
+        });
+}
+</script>
+{% endblock %}

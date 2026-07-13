@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}同学作品 - 课堂作品平台{% endblock %}
+{% block content %}
+
+<div class="tab-nav">
+    <button class="tab-btn" onclick="window.location.href='/'">我的作品</button>
+    <button class="tab-btn active">同学作品</button>
+</div>
+
+<h2 class="section-title">同学们的作品</h2>
+
+{% if student_cards %}
+<div class="folder-grid">
+    {% for card in student_cards %}
+    <a href="{{ url_for('browse.student_folder', user_id=card.id) }}" class="folder-card">
+        <div class="folder-cover">
+            {% if card.cover_id %}
+            <img src="{{ url_for('upload.serve_file', file_id=card.cover_id) }}" alt="{{ card.username }}" loading="lazy">
+            {% else %}
+            <div class="folder-placeholder">📁</div>
+            {% endif %}
+        </div>
+        <div class="folder-info">
+            <span class="folder-name">{{ card.username }}</span>
+            <span class="folder-count">{{ card.file_count }} 个文件</span>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <p>还没有同学上传过作品，快去上传吧！</p>
+</div>
+{% endif %}
+
+{% if web_projects %}
+<h2 class="section-title" style="margin-top: 32px;">网页作品画廊</h2>
+<div class="web-gallery">
+    {% for wp in web_projects %}
+    <a href="/web/{{ wp.uploader.username }}/{{ wp.folder_name }}/" target="_blank" class="web-card">
+        <div class="web-card-cover">
+            <div class="web-card-icon">&lt;/&gt;</div>
+        </div>
+        <div class="web-card-info">
+            <span class="web-card-name">{{ wp.project_name }}</span>
+            <span class="web-card-author">{{ wp.uploader.username }}</span>
+            <span class="web-card-date">{{ wp.deployed_at.strftime('%Y-%m-%d') }}</span>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}
